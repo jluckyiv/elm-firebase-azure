@@ -1,0 +1,10 @@
+{
+  "name": "elm-firebase-azure",
+  "description": "Authenticate with Azure Firebase Functions sample",
+  "scripts": {
+    "start": "elm-app start",
+    "build": "elm-app build",
+    "deploy": "elm-app build && firebase deploy --only hosting"
+  },
+  "private": true
+}
