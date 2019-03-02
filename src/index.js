@@ -22,7 +22,7 @@ const dataForElm = function(data) {
     case "OnAuthStateChanged":
       app.ports.dataForElm.send(data);
       break;
-    case "GoToUrl":
+    case "UrlReceived":
       app.ports.dataForElm.send(data);
       break;
     default:
@@ -31,12 +31,12 @@ const dataForElm = function(data) {
   }
 };
 
-app.ports.dataForJs.subscribe(data => {
+app.ports.dataForFirebase.subscribe(data => {
   switch (data.msg) {
     case "DeleteUser":
       deleteUser(data.payload);
       break;
-    case "ExecJsonp":
+    case "GetToken":
       execJsonp(data.payload);
       break;
     case "SignOut":
@@ -79,7 +79,7 @@ const loadUrl = function(url) {
   } else {
     url_ = base + url;
   }
-  dataForElm({ msg: "GoToUrl", payload: url_ });
+  dataForElm({ msg: "UrlReceived", payload: url_ });
 };
 
 const signOut = function() {

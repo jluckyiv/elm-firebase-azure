@@ -1,18 +1,11 @@
-module Firebase.User exposing (Info, User(..), email, fromField, fromString, fromValue, none, uid, userDecoder)
+module Firebase.User exposing (User, email, fromField, fromString, fromValue, uid, userDecoder)
 
 import Json.Decode as Decode exposing (Decoder, bool, field, string)
 import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as Encode
 
 
-type User
-    = User Info
-    | Loading
-    | Error
-    | None
-
-
-type alias Info =
+type alias User =
     { displayName : String
     , email : String
     , emailVerified : Bool
@@ -24,14 +17,9 @@ type alias Info =
     }
 
 
-none : User
-none =
-    None
-
-
-userDecoder : Decoder Info
+userDecoder : Decoder User
 userDecoder =
-    Decode.succeed Info
+    Decode.succeed User
         |> required "displayName" string
         |> required "email" string
         |> required "emailVerified" bool
@@ -42,58 +30,29 @@ userDecoder =
         |> required "uid" string
 
 
-fromField : String -> Decode.Value -> User
+fromField : String -> Decode.Value -> Maybe User
 fromField fieldName value =
-    let
-        result =
-            Decode.decodeValue (field fieldName userDecoder) value
-    in
-    fromResult result
+    Decode.decodeValue (field fieldName userDecoder) value
+        |> Result.toMaybe
 
 
-fromValue : Decode.Value -> User
+fromValue : Decode.Value -> Maybe User
 fromValue value =
-    let
-        result =
-            Decode.decodeValue userDecoder value
-    in
-    fromResult result
+    Decode.decodeValue userDecoder value
+        |> Result.toMaybe
 
 
-fromString : String -> User
+fromString : String -> Maybe User
 fromString string =
-    let
-        result =
-            Decode.decodeString userDecoder string
-    in
-    fromResult result
-
-
-fromResult : Result Decode.Error Info -> User
-fromResult result =
-    case result of
-        Ok info ->
-            User info
-
-        Err _ ->
-            None
+    Decode.decodeString userDecoder string
+        |> Result.toMaybe
 
 
 email : User -> String
 email user =
-    case user of
-        User info ->
-            info.email
-
-        _ ->
-            ""
+    user.email
 
 
 uid : User -> String
 uid user =
-    case user of
-        User info ->
-            info.uid
-
-        _ ->
-            ""
+    user.uid

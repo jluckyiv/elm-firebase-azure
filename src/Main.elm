@@ -1,10 +1,10 @@
 module Main exposing (Model, Msg(..), init, main, update, view)
 
-import Api exposing (DataForElm(..))
 import Browser
 import Browser.Navigation as Nav
+import Firebase exposing (DataForElm(..))
 import Firebase.Config as Firebase exposing (Config)
-import Firebase.User as User exposing (User(..))
+import Firebase.User as User exposing (User)
 import Html
     exposing
         ( Html
@@ -12,27 +12,22 @@ import Html
         , br
         , button
         , div
-        , h1
         , h3
         , header
-        , i
-        , img
         , node
         , p
         , span
         , strong
         , text
         )
-import Html.Attributes exposing (class, href, id, src)
+import Html.Attributes exposing (class, href, id)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
-import Json.Decode.Pipeline exposing (required)
 import Json.Encode as Encode
 import Page exposing (Page)
 import Route exposing (Route)
 import Url exposing (Url)
 import Url.Builder
-import Url.Parser exposing ((</>), Parser, custom, fragment, int, map, oneOf, parse, s, top)
 
 
 
@@ -44,7 +39,7 @@ type alias Model =
     , config : Maybe Config
     , page : Page
     , route : Route
-    , user : User
+    , user : Maybe User
     }
 
 
@@ -56,7 +51,7 @@ init flags url key =
             , config = Firebase.fromField "config" flags
             , route = Route.parseUrl url
             , page = Page.Blank
-            , user = User.none
+            , user = Nothing
             }
     in
     ( model, Cmd.none )
@@ -77,22 +72,10 @@ loadCurrentPage ( model, cmd ) =
                             ( Page.Home, Cmd.none )
 
                         Route.Auth (Just code) (Just state) ->
-                            let
-                                urlString =
-                                    "https://us-central1-"
-                                        ++ config.projectId
-                                        ++ ".cloudfunctions.net/token"
-                                        ++ "?code="
-                                        ++ Url.percentEncode code
-                                        ++ "&state="
-                                        ++ Url.percentEncode state
-                                        ++ "&callback="
-                                        ++ "signIn"
-                            in
-                            ( Page.Auth code state, Api.send (Api.ExecJsonp urlString) )
+                            ( Page.Auth code state, Firebase.getToken config code state )
 
                         Route.Auth _ _ ->
-                            ( Page.Home, Cmd.none )
+                            ( Page.Blank, Cmd.none )
 
                         Route.NotFound ->
                             ( Page.Blank, Cmd.none )
@@ -129,7 +112,7 @@ loadCurrentPage ( model, cmd ) =
 
 type Msg
     = NoOp
-    | DeleteUser
+    | DeleteUser User
     | Incoming DataForElm
     | LinkClicked Browser.UrlRequest
     | LogErr String
@@ -143,12 +126,12 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        DeleteUser ->
-            ( model, Api.send (Api.DeleteUser (User.uid model.user)) )
+        DeleteUser user ->
+            ( model, Firebase.send (Firebase.DeleteUser (User.uid user)) )
 
         Incoming data ->
             case data of
-                UserReceived info ->
+                OnAuthStateChanged info ->
                     let
                         user =
                             User.fromValue info
@@ -187,10 +170,10 @@ update msg model =
                     )
 
         LogErr err ->
-            ( model, Api.send (Api.LogError err) )
+            ( model, Firebase.send (Firebase.LogError err) )
 
         SignOut ->
-            ( model, Api.send Api.SignOut )
+            ( model, Firebase.send Firebase.SignOut )
 
         UrlChanged url ->
             ( { model | route = Route.parseUrl url }, Cmd.none )
@@ -273,8 +256,8 @@ contentView config model =
 
         _ ->
             case model.user of
-                User info ->
-                    viewSignedInCard model.user model
+                Just user ->
+                    viewSignedInCard user model
 
                 _ ->
                     viewSignedOutCard config model
@@ -304,26 +287,21 @@ viewSignedOutCard config model =
 
 viewSignedInCard : User -> Model -> Html Msg
 viewSignedInCard user model =
-    case user of
-        User _ ->
-            viewCard model
-                "demo-signed-in-card"
-                [ p []
-                    [ span [] [ text "Welcome" ]
-                    , span [ id "demo-name-container" ] []
-                    , br [] []
-                    , span [] [ text "Your Firebase User ID is: " ]
-                    , span [ id "demo-uid-container" ] [ text (User.uid user) ]
-                    , br [] []
-                    , span [] [ text "Your email address: " ]
-                    , span [ id "demo-email-container" ] [ text (User.email user) ]
-                    ]
-                , viewButton model SignOut "demo-sign-out-button" "Sign out"
-                , viewButton model DeleteUser "demo-delete-button" "Delete account"
-                ]
-
-        _ ->
-            text ""
+    viewCard model
+        "demo-signed-in-card"
+        [ p []
+            [ span [] [ text "Welcome" ]
+            , span [ id "demo-name-container" ] []
+            , br [] []
+            , span [] [ text "Your Firebase User ID is: " ]
+            , span [ id "demo-uid-container" ] [ text (User.uid user) ]
+            , br [] []
+            , span [] [ text "Your email address: " ]
+            , span [ id "demo-email-container" ] [ text (User.email user) ]
+            ]
+        , viewButton model SignOut "demo-sign-out-button" "Sign out"
+        , viewButton model (DeleteUser user) "demo-delete-button" "Delete account"
+        ]
 
 
 viewSigningInCard model =
@@ -377,6 +355,6 @@ main =
         , subscriptions =
             \model ->
                 Sub.batch
-                    [ Api.receive Incoming LogErr
+                    [ Firebase.receive Incoming LogErr
                     ]
         }
