@@ -1,5 +1,5 @@
 import { Elm } from "./Main.elm";
-var firebase = require("firebase/app");
+const firebase = require("firebase/app");
 require("firebase/auth");
 
 const config = {
@@ -17,7 +17,7 @@ const app = Elm.Main.init({
   flags: config
 });
 
-const dataForElm = function(data) {
+function dataForElm(data) {
   switch (data.msg) {
     case "OnAuthStateChanged":
       app.ports.dataForElm.send(data);
@@ -29,7 +29,7 @@ const dataForElm = function(data) {
       console.error("Bad message for elm", data.msg);
       break;
   }
-};
+}
 
 app.ports.dataForFirebase.subscribe(data => {
   switch (data.msg) {
@@ -40,7 +40,7 @@ app.ports.dataForFirebase.subscribe(data => {
       deleteUser(data.payload);
       break;
     case "GetToken":
-      execJsonp(data.payload);
+      getToken(data.payload);
       break;
     case "SignOut":
       signOut();
@@ -51,11 +51,7 @@ app.ports.dataForFirebase.subscribe(data => {
   }
 });
 
-firebase.auth().onAuthStateChanged(user => {
-  dataForElm({ msg: "OnAuthStateChanged", payload: user });
-});
-
-const deleteUser = function(uid) {
+function deleteUser(/*uid*/) {
   firebase
     .auth()
     .currentUser.delete()
@@ -69,40 +65,21 @@ const deleteUser = function(uid) {
         firebase.auth().signOut();
       }
     });
-};
+}
 
-const loadUrl = function(url) {
-  const base = window.location.origin;
-  let url_;
-  if (url === undefined) {
-    url_ = base;
-  } else {
-    url_ = base + url;
-  }
-  dataForElm({ msg: "UrlReceived", payload: url_ });
-};
+function execJsonp(url, callbackFunction) {
+  const callbackName = url.match(/callback=([^&]+)/)[1];
 
-const signOut = function() {
-  firebase.auth().signOut();
-};
+  // Assign the callback to the window so it can execute
+  window[callbackName] = function(data) {
+    callbackFunction(data);
 
-// Attach the JSONP callback function to the window.
-// For some reason it isn't called unless it's attached.
-window.signIn = function(data) {
-  if (data.token) {
-    firebase
-      .auth()
-      .signInWithCustomToken(data.token)
-      .then(() => loadUrl())
-      .catch();
-  } else {
-    console.error(data);
-  }
-};
+    // Delete the assignment after execution
+    delete window[callbackName];
+  };
 
-const execJsonp = function(url) {
   // Execute the URL by creating the script DOM element
-  var script = document.createElement("script");
+  const script = document.createElement("script");
   script.type = "text/javascript";
   script.async = true;
   script.src = url;
@@ -111,6 +88,39 @@ const execJsonp = function(url) {
   document.head.appendChild(script);
 
   // Remove the temp element from the DOM, to avoid DOM bloat
-  // You should be able to do this right away, without affecting JSONP execution
   script.parentNode.removeChild(script);
-};
+}
+
+function getToken(url) {
+  const callback = function(data) {
+    if (data.token) {
+      firebase
+        .auth()
+        .signInWithCustomToken(data.token)
+        .then(() => loadUrl())
+        .catch();
+    } else {
+      console.error(data);
+    }
+  };
+  execJsonp(url, callback);
+}
+
+function loadUrl(url) {
+  const base = window.location.origin;
+  let url_;
+  if (url === undefined) {
+    url_ = base;
+  } else {
+    url_ = base + url;
+  }
+  dataForElm({ msg: "UrlReceived", payload: url_ });
+}
+
+function signOut() {
+  firebase.auth().signOut();
+}
+
+firebase.auth().onAuthStateChanged(user => {
+  dataForElm({ msg: "OnAuthStateChanged", payload: user });
+});
