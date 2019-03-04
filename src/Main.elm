@@ -3,7 +3,7 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 import Browser
 import Browser.Navigation as Nav
 import Firebase exposing (DataForElm(..))
-import Firebase.Config as Firebase exposing (Config)
+import Firebase.Config as Config exposing (Config)
 import Firebase.User as User exposing (User)
 import Html
     exposing
@@ -26,6 +26,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Page exposing (Page)
 import Route exposing (Route)
+import Session exposing (Session)
 import Url exposing (Url)
 import Url.Builder
 
@@ -35,23 +36,19 @@ import Url.Builder
 
 
 type alias Model =
-    { key : Nav.Key
-    , config : Maybe Config
-    , page : Page
+    { page : Page
     , route : Route
-    , user : Maybe User
+    , session : Session
     }
 
 
-init : Encode.Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init : Config -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
     let
         model =
-            { key = key
-            , config = Firebase.fromField "config" flags
-            , route = Route.parseUrl url
+            { route = Route.parseUrl url
             , page = Page.Blank
-            , user = Nothing
+            , session = Session.new key flags
             }
     in
     ( model, Cmd.none )
@@ -60,54 +57,23 @@ init flags url key =
 
 loadCurrentPage : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 loadCurrentPage ( model, cmd ) =
-    case model.config of
-        Nothing ->
-            ( model, cmd )
+    let
+        ( page, newCmd ) =
+            case model.route of
+                Route.Home ->
+                    ( Page.Home, Cmd.none )
 
-        Just config ->
-            let
-                ( page, newCmd ) =
-                    case model.route of
-                        Route.Home ->
-                            ( Page.Home, Cmd.none )
+                Route.Auth (Just code) (Just state) ->
+                    ( Page.Auth, Firebase.getToken model.session code state )
 
-                        Route.Auth (Just code) (Just state) ->
-                            ( Page.Auth code state, Firebase.getToken config code state )
-
-                        Route.Auth _ _ ->
-                            ( Page.Blank, Cmd.none )
-
-                        Route.NotFound ->
-                            ( Page.Blank, Cmd.none )
-            in
-            ( { model | page = page }, Cmd.batch [ cmd, newCmd ] )
+                _ ->
+                    ( Page.Blank, Cmd.none )
+    in
+    ( { model | page = page }, Cmd.batch [ cmd, newCmd ] )
 
 
 
 ---- UPDATE ----
--- type AuthData
---     = Blank
---     | Query AuthQuery
---     | Error String
--- type Route
---     = Home
---     | Auth AuthData
---     | NotFound
--- route : Parser (Route -> a) a
--- route =
---     oneOf
---         [ map Home top
---         , map Auth (s "auth" </> int)
---         ]
--- toRoute : String -> Route
--- toRoute string =
---     case Url.fromString string of
---         Nothing ->
---             NotFound
---         Just url ->
---             Maybe.withDefault NotFound (parse route url)
--- Parse Auth return from Azure
--- parse (map AuthParams (s "auth" <?> Query.string "code" <?> Query.string "state" <?> Query.string "session_state"))
 
 
 type Msg
@@ -133,10 +99,12 @@ update msg model =
             case data of
                 OnAuthStateChanged info ->
                     let
-                        user =
-                            User.fromValue info
+                        session =
+                            Session.fromUser
+                                model.session
+                                (User.fromValue info)
                     in
-                    ( { model | user = user }, Cmd.none )
+                    ( { model | session = session }, Cmd.none )
 
                 UrlReceived info ->
                     let
@@ -148,9 +116,7 @@ update msg model =
                     in
                     case maybeUrl of
                         Just url ->
-                            ( model
-                            , Nav.pushUrl model.key (Url.toString url)
-                            )
+                            ( model, pushUrl model url )
 
                         Nothing ->
                             ( model
@@ -160,9 +126,7 @@ update msg model =
         LinkClicked urlRequest ->
             case urlRequest of
                 Browser.Internal url ->
-                    ( model
-                    , Nav.pushUrl model.key (Url.toString url)
-                    )
+                    ( model, pushUrl model url )
 
                 Browser.External href ->
                     ( model
@@ -176,14 +140,15 @@ update msg model =
             ( model, Firebase.send Firebase.SignOut )
 
         UrlChanged url ->
+            let
+                _ =
+                    Debug.log "UrlChanged" url
+            in
             ( { model | route = Route.parseUrl url }, Cmd.none )
                 |> loadCurrentPage
 
 
 
--- route : Parser a b -> a -> Parser (b -> c) c
--- route parser handler =
---     Parser.map handler parser
 ---- VIEW ----
 
 
@@ -234,12 +199,7 @@ viewMain model =
             "mdl-cell--12-col mdl-cell--12-col-tablet mdl-grid"
 
         content =
-            case model.config of
-                Just config ->
-                    [ contentView config model ]
-
-                Nothing ->
-                    [ text "" ]
+            [ contentView model ]
     in
     node "main"
         [ class mainClass ]
@@ -248,23 +208,27 @@ viewMain model =
         ]
 
 
-contentView : Config -> Model -> Html Msg
-contentView config model =
+contentView : Model -> Html Msg
+contentView model =
     case model.page of
-        Page.Auth code state ->
+        Page.Auth ->
             viewSigningInCard model
 
         _ ->
-            case model.user of
+            case Session.user model.session of
                 Just user ->
                     viewSignedInCard user model
 
-                _ ->
-                    viewSignedOutCard config model
+                Nothing ->
+                    viewSignedOutCard model
 
 
-viewSignedOutCard : Config -> Model -> Html Msg
-viewSignedOutCard config model =
+viewSignedOutCard : Model -> Html Msg
+viewSignedOutCard model =
+    let
+        projectId =
+            Session.projectId model.session
+    in
     viewCard model
         "demo-signed-out-card"
         [ p []
@@ -278,7 +242,7 @@ viewSignedOutCard config model =
         , viewLink model
             "demo-sign-in-button"
             ("https://us-central1-"
-                ++ config.projectId
+                ++ projectId
                 ++ ".cloudfunctions.net/redirect"
             )
             "Sign in with Azure AD"
@@ -341,10 +305,29 @@ viewCard model id_ elements =
 
 
 
+---- HELPERS ----
+
+
+pushUrl : Model -> Url -> Cmd Msg
+pushUrl model url =
+    Nav.pushUrl (navKey model) (Url.toString url)
+
+
+config : Model -> Config
+config model =
+    Session.config model.session
+
+
+navKey : Model -> Nav.Key
+navKey model =
+    Session.navKey model.session
+
+
+
 ---- PROGRAM ----
 
 
-main : Program Encode.Value Model Msg
+main : Program Config Model Msg
 main =
     Browser.application
         { view = view

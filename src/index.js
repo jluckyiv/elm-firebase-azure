@@ -14,7 +14,7 @@ firebase.initializeApp(config);
 
 const app = Elm.Main.init({
   node: document.getElementById("root"),
-  flags: { config: config }
+  flags: config
 });
 
 const dataForElm = function(data) {
@@ -33,6 +33,9 @@ const dataForElm = function(data) {
 
 app.ports.dataForFirebase.subscribe(data => {
   switch (data.msg) {
+    case "LogError":
+      console.error("LogError", data.payload);
+      break;
     case "DeleteUser":
       deleteUser(data.payload);
       break;
@@ -41,9 +44,6 @@ app.ports.dataForFirebase.subscribe(data => {
       break;
     case "SignOut":
       signOut();
-      break;
-    case "LogError":
-      console.error("LogError", data.payload);
       break;
     default:
       console.error("Bad message for JS", data.msg);
