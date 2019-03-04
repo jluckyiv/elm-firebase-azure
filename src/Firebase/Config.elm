@@ -1,4 +1,12 @@
-module Firebase.Config exposing (Config, fromField, fromString, fromValue, optionsDecoder)
+module Firebase.Config exposing
+    ( Config
+    , authDomain
+    , fromField
+    , fromString
+    , fromValue
+    , optionsDecoder
+    , projectId
+    )
 
 import Json.Decode as Decode exposing (Decoder, bool, field, string)
 import Json.Decode.Pipeline exposing (optional, required)
@@ -8,7 +16,7 @@ import Json.Encode as Encode
 type alias Config =
     { apiKey : String
     , authDomain : String
-    , databaseUrl : String
+    , databaseURL : String
     , messagingSenderId : String
     , projectId : String
     , storageBucket : String
@@ -24,6 +32,16 @@ optionsDecoder =
         |> required "messagingSenderId" string
         |> required "projectId" string
         |> required "storageBucket" string
+
+
+projectId : Config -> String
+projectId config =
+    config.projectId
+
+
+authDomain : Config -> String
+authDomain config =
+    config.authDomain
 
 
 fromField : String -> Decode.Value -> Maybe Config

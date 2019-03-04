@@ -7,8 +7,8 @@ port module Firebase exposing
     , send
     )
 
-import Firebase.Config exposing (Config)
 import Json.Encode as Encode exposing (Value, null, string)
+import Session exposing (Session)
 import Url
 
 
@@ -24,12 +24,12 @@ type DataForElm
     | UrlReceived Value
 
 
-getToken : Config -> String -> String -> Cmd msg
-getToken config code state =
+getToken : Session -> String -> String -> Cmd msg
+getToken session code state =
     let
         urlString =
             "https://us-central1-"
-                ++ config.projectId
+                ++ Session.projectId session
                 ++ ".cloudfunctions.net/token"
                 ++ "?code="
                 ++ Url.percentEncode code
