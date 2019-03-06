@@ -8,6 +8,7 @@ import Url.Parser.Query as Query
 type Route
     = NotFound
     | Auth (Maybe String) (Maybe String)
+    | AuthError (Maybe String)
     | Home
 
 
@@ -29,10 +30,12 @@ matchers =
         [ map Home top
         , map Auth
             (s "auth"
-                -- <?> Query.string "error"
                 <?> Query.string "code"
                 <?> Query.string "state"
-             -- <?> Query.string "session_state"
+            )
+        , map AuthError
+            (s "auth"
+                <?> Query.string "error"
             )
         ]
 
@@ -53,8 +56,12 @@ pathFor route =
         Home ->
             "/"
 
-        -- Auth (Just error) _ _ ->
-        --     "/auth?" ++ "error=" ++ error
+        AuthError (Just error) ->
+            "/auth?" ++ "error=" ++ error
+
+        AuthError _ ->
+            "/auth?" ++ "error="
+
         Auth (Just code) (Just state) ->
             "/auth?" ++ "code=" ++ code ++ "&state=" ++ state
 
