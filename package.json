@@ -4,7 +4,9 @@
   "scripts": {
     "start": "elm-app start",
     "build": "elm-app build",
-    "deploy": "elm-app build && firebase deploy --only hosting"
+    "deploy": "elm-app build && firebase deploy --only hosting",
+    "local": "firebase functions:config:set azure.redirect_uri='http://localhost:300/auth' && firebase deploy --only functions",
+    "remote": "firebase functions:config:set azure.redirect_uri='https://elm-firebase-azure.firebaseapp.com/auth' && firebase deploy --only functions"
   },
   "private": true
 }
