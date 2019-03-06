@@ -23,7 +23,6 @@ import Html
 import Html.Attributes exposing (class, href, id)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
-import Json.Encode as Encode
 import Page exposing (Page)
 import Route exposing (Route)
 import Session exposing (Session)
@@ -140,10 +139,6 @@ update msg model =
             ( model, Firebase.send Firebase.SignOut )
 
         UrlChanged url ->
-            let
-                _ =
-                    Debug.log "UrlChanged" url
-            in
             ( { model | route = Route.parseUrl url }, Cmd.none )
                 |> loadCurrentPage
 
