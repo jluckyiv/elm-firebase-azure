@@ -1,20 +1,23 @@
-module Route exposing (Route(..), authPath, homePath, parseUrl)
+module Route exposing (Route(..), fromUrl, replaceUrl)
 
+import Browser.Navigation as Nav
+import Html exposing (Attribute)
+import Html.Attributes as Attr
 import Url exposing (Url)
-import Url.Parser exposing (..)
+import Url.Parser as Parser exposing ((</>), (<?>), Parser, oneOf, s, string)
 import Url.Parser.Query as Query
 
 
 type Route
-    = NotFound
+    = Home
+    | Root
     | Auth (Maybe String) (Maybe String)
-    | AuthError (Maybe String)
-    | Home
 
 
 
-{--
+-- ROUTING
 -- Need to deal with error case
+{--
 type alias AuthRouteParams =
     { code : String
     , state : String
@@ -24,61 +27,64 @@ parse (map AuthRouteParams (s "auth" <?> string "code" <?> string "state" <?> st
 --}
 
 
-matchers : Parser (Route -> a) a
-matchers =
+parser : Parser (Route -> a) a
+parser =
     oneOf
-        [ map Home top
-        , map Auth
-            (s "auth"
-                <?> Query.string "code"
-                <?> Query.string "state"
-            )
-        , map AuthError
-            (s "auth"
-                <?> Query.string "error"
-            )
+        [ Parser.map Home Parser.top
+        , Parser.map Auth (s "auth" <?> Query.string "code" <?> Query.string "state")
         ]
 
 
-parseUrl : Url -> Route
-parseUrl url =
-    case parse matchers url of
-        Just route ->
-            route
 
-        Nothing ->
-            NotFound
+-- PUBLIC HELPERS
 
 
-pathFor : Route -> String
-pathFor route =
-    case route of
-        Home ->
-            "/"
-
-        AuthError (Just error) ->
-            "/auth?" ++ "error=" ++ error
-
-        AuthError _ ->
-            "/auth?" ++ "error="
-
-        Auth (Just code) (Just state) ->
-            "/auth?" ++ "code=" ++ code ++ "&state=" ++ state
-
-        Auth _ _ ->
-            "/auth"
-
-        NotFound ->
-            "/404"
+href : Route -> Attribute msg
+href targetRoute =
+    Attr.href (routeToString targetRoute)
 
 
-homePath =
-    pathFor Home
+replaceUrl : Nav.Key -> Route -> Cmd msg
+replaceUrl key route =
+    Nav.replaceUrl key (routeToString route)
 
 
-authPath code state =
-    pathFor <| Auth code state
+fromUrl : Url -> Maybe Route
+fromUrl url =
+    -- The RealWorld spec treats the fragment like a path.
+    -- This makes it *literally* the path, so we can proceed
+    -- with parsing as if it had been a normal path all along.
+    -- { url | path = Maybe.withDefault "" url.fragment, fragment = Nothing }
+    url
+        |> Parser.parse parser
 
 
-notFoundPath =
-    pathFor NotFound
+
+-- INTERNAL
+
+
+routeToString : Route -> String
+routeToString page =
+    let
+        pieces =
+            case page of
+                Home ->
+                    []
+
+                Root ->
+                    []
+
+                Auth (Just code) (Just state) ->
+                    [ "/auth?" ++ "code=" ++ code ++ "&state=" ++ state ]
+
+                Auth _ _ ->
+                    [ "/auth" ]
+    in
+    "/" ++ String.join "/" pieces
+
+
+
+-- AuthError (Just error) ->
+--     "/auth?" ++ "error=" ++ error
+-- AuthError _ ->
+--     "/auth?" ++ "error="

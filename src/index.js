@@ -31,25 +31,25 @@ function dataForElm(data) {
   }
 }
 
-app.ports.dataForFirebase.subscribe(data => {
-  switch (data.msg) {
-    case "LogError":
-      console.error("LogError", data.payload);
-      break;
-    case "DeleteUser":
-      deleteUser(data.payload);
-      break;
-    case "GetToken":
-      getToken(data.payload);
-      break;
-    case "SignOut":
-      signOut();
-      break;
-    default:
-      console.error("Bad message for JS", data.msg);
-      break;
-  }
-});
+// app.ports.dataForFirebase.subscribe(data => {
+//   switch (data.msg) {
+//     case "LogError":
+//       console.error("LogError", data.payload);
+//       break;
+//     case "DeleteUser":
+//       deleteUser(data.payload);
+//       break;
+//     case "GetToken":
+//       getToken(data.payload);
+//       break;
+//     case "SignOut":
+//       signOut();
+//       break;
+//     default:
+//       console.error("Bad message for JS", data.msg);
+//       break;
+//   }
+// });
 
 function deleteUser(/*uid*/) {
   firebase
