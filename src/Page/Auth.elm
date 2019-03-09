@@ -41,7 +41,7 @@ init session maybeCode maybeState =
 view : Model -> { title : String, content : Html msg }
 view model =
     { title = "Auth"
-    , content = content model
+    , content = content
     }
 
 
@@ -59,6 +59,6 @@ toSession model =
     model.session
 
 
-update : Model -> ( Model, Cmd Msg )
-update model =
+update : Msg -> Model -> ( Model, Cmd Msg )
+update _ model =
     ( model, Cmd.none )

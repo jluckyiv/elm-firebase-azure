@@ -54,7 +54,7 @@ content model =
             viewSignedOutCard model
 
         Just user ->
-            viewSignedInCard user model
+            viewSignedInCard user
 
 
 viewSignedInCard : User -> Html Msg
