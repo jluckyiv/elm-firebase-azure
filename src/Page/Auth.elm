@@ -20,9 +20,6 @@ type Msg
 init : Session -> Maybe String -> Maybe String -> ( Model, Cmd Msg )
 init session maybeCode maybeState =
     let
-        _ =
-            Debug.log "Page.Auth.init"
-
         model =
             Model session maybeCode maybeState
     in
