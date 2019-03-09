@@ -8,5 +8,9 @@
     "local": "firebase functions:config:set azure.redirect_uri='http://localhost:3000/auth' && firebase deploy --only functions",
     "remote": "firebase functions:config:set azure.redirect_uri='https://elm-firebase-azure.firebaseapp.com/auth' && firebase deploy --only functions"
   },
-  "private": true
+  "private": true,
+  "dependencies": {
+    "firebase": "^5.8.6",
+    "firebase-auth": "^0.1.2"
+  }
 }
