@@ -69,7 +69,6 @@ function deleteUser(/*uid*/) {
 
 function execJsonp(url, callbackFunction) {
   const callbackName = url.match(/callback=([^&]+)/)[1];
-  console.log("execJsonp.callbackName", callbackName);
 
   // Assign the callback to the window so it can execute
   window[callbackName] = function(data) {
@@ -93,7 +92,6 @@ function execJsonp(url, callbackFunction) {
 }
 
 function getToken(url) {
-  console.log("getToken, url: ", url);
   const callback = function(data) {
     if (data.token) {
       firebase
@@ -124,6 +122,5 @@ function signOut() {
 }
 
 firebase.auth().onAuthStateChanged(user => {
-  console.log("onAuthStateChanged", user);
   dataForElm({ msg: "OnAuthStateChanged", payload: user });
 });
