@@ -11,7 +11,7 @@ import Page exposing (Page)
 import Page.Auth as Auth
 import Page.Blank as Blank
 import Page.Home as Home
-import Page.SigningIn as SigningIn
+import Page.NotFound as NotFound
 import Route exposing (Route)
 import Session exposing (Session)
 import Url exposing (Url)
@@ -26,7 +26,6 @@ type Model
     = Redirect Session
     | NotFound Session
     | Home Home.Model
-    | SigningIn SigningIn.Model
     | Auth Auth.Model
 
 
@@ -52,8 +51,8 @@ changeRouteTo maybeRoute model =
             Home.init session
                 |> updateWith Home GotHomeMsg model
 
-        Just (Route.Auth _ _) ->
-            Auth.init session
+        Just (Route.Auth code state) ->
+            Auth.init session code state
                 |> updateWith Auth GotAuthMsg model
 
 
@@ -69,9 +68,6 @@ toSession page =
         Home home ->
             Home.toSession home
 
-        SigningIn signingIn ->
-            SigningIn.toSession signingIn
-
         Auth auth ->
             Auth.toSession auth
 
@@ -81,37 +77,24 @@ toSession page =
 
 
 type Msg
-    = Ignored
-    | ChangedUrl Url
-    | ClickedLink Browser.UrlRequest
-    | DeleteUser User
-    | GotAuthMsg Auth.Msg
-    | GotHomeMsg Home.Msg
-    | GotSession Session
-    | Incoming DataForElm
-    | LogErr String
-    | SignOut
-
-
-
--- loadCurrentPage : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
--- loadCurrentPage ( model, cmd ) =
---     let
---         ( page, newCmd ) =
---             case model.route of
---                 Route.Home ->
---                     ( Page.Home, Cmd.none )
---                 Route.Auth (Just code) (Just state) ->
---                     ( Page.Auth, Firebase.getToken model.session code state )
---                 _ ->
---                     ( Page.Blank, Cmd.none )
---     in
---     ( { model | page = page }, Cmd.batch [ cmd, newCmd ] )
+    = Ignored -- handled
+    | ChangedUrl Url -- handled
+    | ClickedLink Browser.UrlRequest -- handled
+    | DeletedUser -- handled
+    | GotAuthMsg Auth.Msg -- handled
+    | GotHomeMsg Home.Msg -- handled
+    | GotSession Session -- handled
+    | GotData DataForElm -- not handled
+    | LoggedError String -- not handled
+    | SignedOut -- not handled
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case ( msg, model ) of
+        ( GotData data, _ ) ->
+            gotData model data
+
         ( Ignored, _ ) ->
             ( model, Cmd.none )
 
@@ -144,23 +127,24 @@ update msg model =
         ( ChangedUrl url, _ ) ->
             changeRouteTo (Route.fromUrl url) model
 
+        ( DeletedUser, _ ) ->
+            ( model, Firebase.send Firebase.DeleteUser )
+
         ( GotHomeMsg subMsg, Home home ) ->
             Home.update subMsg home
                 |> updateWith Home GotHomeMsg model
 
-        -- ( GotProfileMsg subMsg, Profile username profile ) ->
-        --     Profile.update subMsg profile
-        --         |> updateWith (Profile username) GotProfileMsg model
-        -- ( GotArticleMsg subMsg, Article article ) ->
-        --     Article.update subMsg article
-        --         |> updateWith Article GotArticleMsg model
-        -- ( GotEditorMsg subMsg, Editor slug editor ) ->
-        --     Editor.update subMsg editor
-        --         |> updateWith (Editor slug) GotEditorMsg model
+        ( GotAuthMsg subMsg, Auth auth ) ->
+            Auth.update subMsg auth
+                |> updateWith Auth GotAuthMsg model
+
         ( GotSession session, Redirect _ ) ->
             ( Redirect session
             , Route.replaceUrl (Session.navKey session) Route.Home
             )
+
+        ( SignedOut, _ ) ->
+            ( model, Cmd.none )
 
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.
@@ -194,17 +178,63 @@ view model =
         Redirect _ ->
             viewPage Page.Other (\_ -> Ignored) Blank.view
 
-        Home _ ->
-            viewPage Page.Other (\_ -> Ignored) Blank.view
-
-        SigningIn _ ->
-            viewPage Page.Other (\_ -> Ignored) Blank.view
-
-        Auth _ ->
-            viewPage Page.Other (\_ -> Ignored) Blank.view
-
         NotFound _ ->
-            viewPage Page.Other (\_ -> Ignored) Blank.view
+            viewPage Page.Other (\_ -> Ignored) NotFound.view
+
+        Home home ->
+            viewPage Page.Home GotHomeMsg (Home.view home)
+
+        Auth auth ->
+            viewPage Page.Other GotAuthMsg (Auth.view auth)
+
+
+gotData : Model -> DataForElm -> ( Model, Cmd msg )
+gotData model data =
+    case data of
+        ReceivedUser info ->
+            let
+                maybeUser =
+                    User.fromValue info
+            in
+            case model of
+                Home _ ->
+                    let
+                        newModel =
+                            Home.Model (Session.fromUser (toSession model) maybeUser)
+                    in
+                    ( Home newModel, Route.replaceUrl (navKey model) Route.Home )
+
+                Auth _ ->
+                    let
+                        newModel =
+                            Auth.Model (Session.fromUser (toSession model) maybeUser) Nothing Nothing
+                    in
+                    ( Auth newModel, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        -- ( Model (Session.fromUser (toSession model) user)
+        -- , Cmd.none
+        -- )
+        ReceivedUrl info ->
+            let
+                maybeUrl =
+                    info
+                        |> Decode.decodeValue Decode.string
+                        |> Result.withDefault (Url.Builder.absolute [] [])
+                        |> Url.fromString
+            in
+            case maybeUrl of
+                Just url ->
+                    ( model
+                    , Nav.pushUrl (navKey model) (Url.toString url)
+                    )
+
+                Nothing ->
+                    ( model
+                    , Cmd.none
+                    )
 
 
 
@@ -241,6 +271,25 @@ main =
         , subscriptions =
             \model ->
                 Sub.batch
-                    [ Firebase.receive Incoming LogErr
+                    [ Firebase.receive GotData LoggedError
                     ]
         }
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case model of
+        NotFound _ ->
+            Sub.none
+
+        Redirect _ ->
+            -- Session.changes GotSession (navKey model)
+            Sub.none
+
+        Home home ->
+            -- Sub.map GotHomeMsg (Home.subscriptions home)
+            Sub.none
+
+        Auth auth ->
+            -- Sub.map GotAuthMsg (Auth.subscriptions auth)
+            Sub.none

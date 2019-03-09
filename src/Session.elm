@@ -18,6 +18,7 @@ module Session exposing
 -- import Viewer exposing (Viewer)
 
 import Browser.Navigation as Nav
+import Firebase
 import Firebase.Config as Config exposing (Config)
 import Firebase.User as User exposing (User)
 
@@ -73,14 +74,12 @@ projectId session =
 
 
 -- CHANGES
--- changes : (Session -> msg) -> Nav.Key -> Config -> Sub msg
--- changes toMsg key conf =
---     Firebase.onAuthStateChanged (\maybeUser -> toMsg (fromUser key conf maybeUser)) User.decoder
 
 
 new : Nav.Key -> Config -> Session
 new key conf =
     Guest key conf
+
 
 
 fromUser : Session -> Maybe User -> Session
@@ -93,8 +92,8 @@ fromUser session maybeUser =
             config session
     in
     case maybeUser of
-        Just viewerVal ->
-            LoggedIn key conf viewerVal
+        Just userVal ->
+            LoggedIn key conf userVal
 
         Nothing ->
             Guest key conf

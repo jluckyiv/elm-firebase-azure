@@ -7,29 +7,29 @@ port module Firebase exposing
     , send
     )
 
+import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode exposing (Value, null, string)
-import Session exposing (Session)
 import Url
 
 
 type DataForFirebase
     = LogError String
-    | DeleteUser String
+    | DeleteUser
     | GetToken String
     | SignOut
 
 
 type DataForElm
-    = OnAuthStateChanged Value
-    | UrlReceived Value
+    = ReceivedUser Value
+    | ReceivedUrl Value
 
 
-getToken : Session -> String -> String -> Cmd msg
-getToken session code state =
+getToken : String -> String -> String -> Cmd msg
+getToken projectId code state =
     let
         urlString =
             "https://us-central1-"
-                ++ Session.projectId session
+                ++ projectId
                 ++ ".cloudfunctions.net/token"
                 ++ "?code="
                 ++ Url.percentEncode code
@@ -47,8 +47,8 @@ send data =
         LogError err ->
             dataForFirebase { msg = "LogError", payload = string err }
 
-        DeleteUser uid ->
-            dataForFirebase { msg = "DeleteUser", payload = string uid }
+        DeleteUser ->
+            dataForFirebase { msg = "DeleteUser", payload = null }
 
         GetToken url ->
             dataForFirebase { msg = "GetToken", payload = string url }
@@ -63,10 +63,10 @@ receive tagger onError =
         (\data ->
             case data.msg of
                 "OnAuthStateChanged" ->
-                    tagger <| OnAuthStateChanged data.payload
+                    tagger <| ReceivedUser data.payload
 
                 "UrlReceived" ->
-                    tagger <| UrlReceived data.payload
+                    tagger <| ReceivedUrl data.payload
 
                 _ ->
                     onError <| "Unexpected msg from JavaScript: " ++ data.msg

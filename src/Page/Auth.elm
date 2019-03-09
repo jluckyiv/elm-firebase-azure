@@ -1,27 +1,63 @@
-module Page.Auth exposing (Model, Msg, toSession, view, init)
+module Page.Auth exposing (Model, Msg, init, toSession, update, view)
 
-import Html exposing (Html, text)
+import Firebase
+import Html exposing (Html, p, text)
+import Page
 import Session exposing (Session)
+import Url
 
 
 type alias Model =
-    { session : Session }
+    { session : Session
+    , code : Maybe String
+    , state : Maybe String
+    }
 
 
 type Msg
     = Ignored
 
 
-init : Session -> ( Model, Cmd Msg )
-init session =
-    ( Model session, Cmd.none )
+init : Session -> Maybe String -> Maybe String -> ( Model, Cmd Msg )
+init session maybeCode maybeState =
+    let
+        _ = Debug.log "Page.Auth.init"
+        model =
+            Model session maybeCode maybeState
+    in
+    case ( maybeCode, maybeState ) of
+        ( Just code, Just state ) ->
+            let
+                projectId =
+                    Session.projectId session
+            in
+            ( model, Firebase.getToken projectId code state )
+
+        ( _, _ ) ->
+            ( model, Cmd.none )
 
 
-view : Model -> Html msg
+view : Model -> { title : String, content : Html msg }
 view model =
-    text ("Page.Auth with projectId: " ++ Session.projectId model.session)
+    { title = "Auth"
+    , content = content model
+    }
+
+
+content : Model -> Html msg
+content model =
+    Page.viewCard
+        "demo-signing-in-card"
+        [ p []
+            [ text "Signing in...." ]
+        ]
 
 
 toSession : Model -> Session
 toSession model =
     model.session
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    ( model, Cmd.none )
