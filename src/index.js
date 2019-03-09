@@ -31,25 +31,25 @@ function dataForElm(data) {
   }
 }
 
-// app.ports.dataForFirebase.subscribe(data => {
-//   switch (data.msg) {
-//     case "LogError":
-//       console.error("LogError", data.payload);
-//       break;
-//     case "DeleteUser":
-//       deleteUser(data.payload);
-//       break;
-//     case "GetToken":
-//       getToken(data.payload);
-//       break;
-//     case "SignOut":
-//       signOut();
-//       break;
-//     default:
-//       console.error("Bad message for JS", data.msg);
-//       break;
-//   }
-// });
+app.ports.dataForFirebase.subscribe(data => {
+  switch (data.msg) {
+    case "LogError":
+      console.error("LogError", data.payload);
+      break;
+    case "DeleteUser":
+      deleteUser(data.payload);
+      break;
+    case "GetToken":
+      getToken(data.payload);
+      break;
+    case "SignOut":
+      signOut();
+      break;
+    default:
+      console.error("Bad message for JS", data.msg);
+      break;
+  }
+});
 
 function deleteUser(/*uid*/) {
   firebase
@@ -69,6 +69,7 @@ function deleteUser(/*uid*/) {
 
 function execJsonp(url, callbackFunction) {
   const callbackName = url.match(/callback=([^&]+)/)[1];
+  console.log("execJsonp.callbackName", callbackName);
 
   // Assign the callback to the window so it can execute
   window[callbackName] = function(data) {
@@ -92,6 +93,7 @@ function execJsonp(url, callbackFunction) {
 }
 
 function getToken(url) {
+  console.log("getToken, url: ", url);
   const callback = function(data) {
     if (data.token) {
       firebase
@@ -122,5 +124,6 @@ function signOut() {
 }
 
 firebase.auth().onAuthStateChanged(user => {
+  console.log("onAuthStateChanged", user);
   dataForElm({ msg: "OnAuthStateChanged", payload: user });
 });
