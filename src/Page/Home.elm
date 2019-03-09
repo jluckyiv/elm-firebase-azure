@@ -57,8 +57,8 @@ content model =
             viewSignedInCard user model
 
 
-viewSignedInCard : User -> Model -> Html Msg
-viewSignedInCard user model =
+viewSignedInCard : User -> Html Msg
+viewSignedInCard user =
     Page.viewCard
         "demo-signed-in-card"
         [ p []
@@ -71,8 +71,8 @@ viewSignedInCard user model =
             , span [] [ text "Your email address: " ]
             , span [ id "demo-email-container" ] [ text (User.email user) ]
             ]
-        , Page.viewButton model SignOut "demo-sign-out-button" "Sign out"
-        , Page.viewButton model DeleteUser "demo-delete-button" "Delete account"
+        , Page.viewButton SignOut "demo-sign-out-button" "Sign out"
+        , Page.viewButton DeleteUser "demo-delete-button" "Delete account"
         ]
 
 

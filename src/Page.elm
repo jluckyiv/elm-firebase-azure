@@ -1,7 +1,6 @@
 module Page exposing (Msg, Page(..), view, viewButton, viewCard, viewLink)
 
 import Browser exposing (Document)
-import Firebase.User as User exposing (User)
 import Html
     exposing
         ( Html
@@ -32,8 +31,8 @@ type Msg
     = Ignored
 
 
-view : Maybe User -> Page -> { title : String, content : Html msg } -> Document msg
-view maybeUser page { title, content } =
+view : { title : String, content : Html msg } -> Document msg
+view { title, content } =
     let
         layoutClass =
             "demo-layout mdl-layout mdl-js-layout mdl-layout--fixed-header"
@@ -41,15 +40,13 @@ view maybeUser page { title, content } =
     { title = title ++ " - Elm Firebase Azure"
     , body =
         [ div [ class layoutClass ]
-            (viewHeader page maybeUser :: [ viewMain content ]
-             -- :: [ viewFooter ]
-            )
+            (viewHeader :: viewMain content :: viewFooter :: [])
         ]
     }
 
 
-viewHeader : Page -> Maybe User -> Html msg
-viewHeader page maybeUser =
+viewHeader : Html msg
+viewHeader =
     let
         headerClass =
             "mdl-layout__header mdl-color-text--white mdl-color--light-blue-700"
@@ -98,7 +95,7 @@ viewLink id_ href_ text_ =
     a [ id id_, href href_, class linkClass ] [ text text_ ]
 
 
-viewButton model msg id_ text_ =
+viewButton msg id_ text_ =
     {--Add Msg --}
     let
         buttonClass =

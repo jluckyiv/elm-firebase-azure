@@ -45,8 +45,8 @@ view model =
     }
 
 
-content : Model -> Html msg
-content model =
+content : Html msg
+content =
     Page.viewCard
         "demo-signing-in-card"
         [ p []
@@ -59,6 +59,6 @@ toSession model =
     model.session
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Model -> ( Model, Cmd Msg )
+update model =
     ( model, Cmd.none )

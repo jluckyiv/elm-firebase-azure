@@ -152,7 +152,7 @@ update msg model =
 
 
 updateWith : (subModel -> Model) -> (subMsg -> Msg) -> Model -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
-updateWith toModel toMsg model ( subModel, subCmd ) =
+updateWith toModel toMsg _ ( subModel, subCmd ) =
     ( toModel subModel
     , Cmd.map toMsg subCmd
     )
@@ -165,10 +165,10 @@ updateWith toModel toMsg model ( subModel, subCmd ) =
 view : Model -> Browser.Document Msg
 view model =
     let
-        viewPage page toMsg conf =
+        viewPage _ toMsg conf =
             let
                 { title, body } =
-                    Page.view (Session.user (toSession model)) page conf
+                    Page.view conf
             in
             { title = title
             , body = List.map (Html.map toMsg) body
@@ -269,7 +269,7 @@ main =
         , init = init
         , update = update
         , subscriptions =
-            \model ->
+            \_ ->
                 Sub.batch
                     [ Firebase.receive GotData LoggedError
                     ]
@@ -286,10 +286,10 @@ subscriptions model =
             -- Session.changes GotSession (navKey model)
             Sub.none
 
-        Home home ->
+        Home _ ->
             -- Sub.map GotHomeMsg (Home.subscriptions home)
             Sub.none
 
-        Auth auth ->
+        Auth _ ->
             -- Sub.map GotAuthMsg (Auth.subscriptions auth)
             Sub.none
