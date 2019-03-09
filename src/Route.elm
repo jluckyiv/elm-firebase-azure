@@ -75,10 +75,10 @@ routeToString page =
                     []
 
                 Auth (Just code) (Just state) ->
-                    [ "/auth?" ++ "code=" ++ code ++ "&state=" ++ state ]
+                    [ "auth?" ++ "code=" ++ code ++ "&state=" ++ state ]
 
                 Auth _ _ ->
-                    [ "/auth" ]
+                    [ "auth" ]
     in
     "/" ++ String.join "/" pieces
 
