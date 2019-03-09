@@ -18,7 +18,6 @@ module Session exposing
 -- import Viewer exposing (Viewer)
 
 import Browser.Navigation as Nav
-import Firebase
 import Firebase.Config as Config exposing (Config)
 import Firebase.User as User exposing (User)
 
@@ -79,7 +78,6 @@ projectId session =
 new : Nav.Key -> Config -> Session
 new key conf =
     Guest key conf
-
 
 
 fromUser : Session -> Maybe User -> Session

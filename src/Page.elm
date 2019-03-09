@@ -6,15 +6,11 @@ import Html
     exposing
         ( Html
         , a
-        , br
         , button
         , div
         , h3
         , header
         , node
-        , p
-        , span
-        , strong
         , text
         )
 import Html.Attributes exposing (class, href, id)

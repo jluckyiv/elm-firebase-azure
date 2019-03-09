@@ -2,7 +2,6 @@ module Firebase.User exposing (User, decoder, email, fromField, fromString, from
 
 import Json.Decode as Decode exposing (Decoder, bool, field, string)
 import Json.Decode.Pipeline exposing (optional, required)
-import Json.Encode as Encode
 
 
 type User

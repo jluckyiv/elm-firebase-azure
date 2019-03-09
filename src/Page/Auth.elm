@@ -4,7 +4,6 @@ import Firebase
 import Html exposing (Html, p, text)
 import Page
 import Session exposing (Session)
-import Url
 
 
 type alias Model =
@@ -21,7 +20,9 @@ type Msg
 init : Session -> Maybe String -> Maybe String -> ( Model, Cmd Msg )
 init session maybeCode maybeState =
     let
-        _ = Debug.log "Page.Auth.init"
+        _ =
+            Debug.log "Page.Auth.init"
+
         model =
             Model session maybeCode maybeState
     in

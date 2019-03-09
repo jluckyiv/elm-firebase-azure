@@ -1,8 +1,7 @@
 module Page.Blank exposing (view)
 
-import Html exposing (Html, div, p, span, text)
+import Html exposing (Html, p, text)
 import Page
-import Session
 
 
 view : { title : String, content : Html msg }

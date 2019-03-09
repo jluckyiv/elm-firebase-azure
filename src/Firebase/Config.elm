@@ -8,9 +8,8 @@ module Firebase.Config exposing
     , projectId
     )
 
-import Json.Decode as Decode exposing (Decoder, bool, field, string)
-import Json.Decode.Pipeline exposing (optional, required)
-import Json.Encode as Encode
+import Json.Decode as Decode exposing (Decoder, field, string)
+import Json.Decode.Pipeline exposing (required)
 
 
 type alias Config =
