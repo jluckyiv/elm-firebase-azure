@@ -2,11 +2,13 @@ port module Firebase exposing
     ( Data
     , DataForElm(..)
     , DataForFirebase(..)
+    , deleteUser
     , getToken
     , receive
-    , send
+    , signOut
     )
 
+import Firebase.Config exposing (Config)
 import Json.Encode as Encode exposing (Value, null, string)
 import Url
 
@@ -23,19 +25,21 @@ type DataForElm
     | ReceivedUrl Value
 
 
-getToken : String -> String -> String -> Cmd msg
-getToken projectId code state =
+deleteUser : Cmd msg
+deleteUser =
+    send DeleteUser
+
+
+signOut : Cmd msg
+signOut =
+    send SignOut
+
+
+getToken : Config -> String -> String -> Cmd msg
+getToken config code state =
     let
         urlString =
-            "https://us-central1-"
-                ++ projectId
-                ++ ".cloudfunctions.net/token"
-                ++ "?code="
-                ++ Url.percentEncode code
-                ++ "&state="
-                ++ Url.percentEncode state
-                ++ "&callback="
-                ++ "signIn"
+            tokenUrl config code state
     in
     send (GetToken urlString)
 
@@ -80,3 +84,25 @@ port dataForFirebase : Data -> Cmd msg
 
 
 port dataForElm : (Data -> msg) -> Sub msg
+
+
+
+-- HELPERS
+
+
+projectId : Config -> String
+projectId config =
+    config.projectId
+
+
+tokenUrl : Config -> String -> String -> String
+tokenUrl config code state =
+    "https://us-central1-"
+        ++ projectId config
+        ++ ".cloudfunctions.net/token"
+        ++ "?code="
+        ++ Url.percentEncode code
+        ++ "&state="
+        ++ Url.percentEncode state
+        ++ "&callback="
+        ++ "signIn"

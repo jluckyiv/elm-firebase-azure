@@ -30,10 +30,10 @@ update msg model =
             ( model, Cmd.none )
 
         SignOut ->
-            ( model, Firebase.send Firebase.SignOut )
+            ( model, Firebase.signOut )
 
         DeleteUser ->
-            ( model, Firebase.send Firebase.DeleteUser )
+            ( model, Firebase.deleteUser )
 
 
 view : Model -> { title : String, content : Html Msg }

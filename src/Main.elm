@@ -128,7 +128,7 @@ update msg model =
             changeRouteTo (Route.fromUrl url) model
 
         ( DeletedUser, _ ) ->
-            ( model, Firebase.send Firebase.DeleteUser )
+            ( model, Firebase.deleteUser )
 
         ( GotHomeMsg subMsg, Home home ) ->
             Home.update subMsg home
