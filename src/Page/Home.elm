@@ -2,10 +2,10 @@ module Page.Home exposing (Model, Msg, init, toSession, update, view)
 
 import Firebase
 import Firebase.User as User exposing (User)
-import Html exposing (Html, br, p, span, strong, text)
-import Html.Attributes exposing (id)
+import Html exposing (Html, br, p, span, strong, text, div)
+import Html.Attributes exposing (id, class)
 import Page
-import Session exposing (Session)
+import Session exposing (Session(..))
 
 
 type alias Model =
@@ -46,21 +46,31 @@ view model =
 content : Model -> Html Msg
 content model =
     let
-        maybeUser =
-            model |> toSession |> Session.user
+        session = toSession model
     in
-    case maybeUser of
-        Nothing ->
-            viewSignedOutCard model
+    case session of
+        Guest _ _  ->
+            viewGuestCard session
 
-        Just user ->
-            viewSignedInCard user
+        LoggedIn _ _ user ->
+            viewLoggedInCard user
+        
+        Pending _ _ ->
+            viewPendingCard
 
 
-viewSignedInCard : User -> Html Msg
-viewSignedInCard user =
+viewPendingCard : Html Msg
+viewPendingCard =
+        Page.viewCard
+            "demo-pending-card"
+            [ div [ class "loading" ]
+                [ text "Checking login status" ]
+            ]
+
+viewLoggedInCard : User -> Html Msg
+viewLoggedInCard user =
     Page.viewCard
-        "demo-signed-in-card"
+        "demo-logged-in-card"
         [ p []
             [ span [] [ text "Welcome" ]
             , span [ id "demo-name-container" ] []
@@ -76,14 +86,14 @@ viewSignedInCard user =
         ]
 
 
-viewSignedOutCard : Model -> Html msg
-viewSignedOutCard model =
+viewGuestCard : Session -> Html msg
+viewGuestCard session =
     let
         projectId =
-            Session.projectId model.session
+            Session.projectId session
     in
     Page.viewCard
-        "demo-signed-out-card"
+        "demo-guest-card"
         [ p []
             [ span []
                 [ text "This web application demonstrates how you can Sign In with Azure AD to Firebase Authentication. "
@@ -91,7 +101,6 @@ viewSignedOutCard model =
                 ]
             ]
 
-        -- , viewLink model "demo-sign-in-button" "/auth" "Sign in with Azure AD"
         , Page.viewLink
             "demo-sign-in-button"
             ("https://us-central1-"

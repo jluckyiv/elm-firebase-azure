@@ -1,5 +1,6 @@
 port module Firebase exposing
-    ( Data
+    ( CodeState
+    , Data
     , DataForElm(..)
     , DataForFirebase(..)
     , deleteUser
@@ -13,6 +14,20 @@ import Json.Encode as Encode exposing (Value, null, string)
 import Url
 
 
+
+-- PORTS
+
+
+port dataForFirebase : Data -> Cmd msg
+
+
+port dataForElm : (Data -> msg) -> Sub msg
+
+
+
+-- MODEL
+
+
 type DataForFirebase
     = LogError String
     | DeleteUser
@@ -21,13 +36,25 @@ type DataForFirebase
 
 
 type DataForElm
-    = ReceivedUser Value
-    | ReceivedUrl Value
+    = ReceivedUrl Value
+    | ReceivedUser Value
 
 
-deleteUser : Cmd msg
-deleteUser =
-    send DeleteUser
+type alias Data =
+    { msg : String, payload : Value }
+
+
+type alias CodeState =
+    ( String, String )
+
+
+
+-- API
+
+
+getToken : Config -> CodeState -> Cmd msg
+getToken config codeState =
+    send (GetToken (tokenUrl config codeState))
 
 
 signOut : Cmd msg
@@ -35,13 +62,13 @@ signOut =
     send SignOut
 
 
-getToken : Config -> String -> String -> Cmd msg
-getToken config code state =
-    let
-        urlString =
-            tokenUrl config code state
-    in
-    send (GetToken urlString)
+deleteUser : Cmd msg
+deleteUser =
+    send DeleteUser
+
+
+
+-- HELPERS
 
 
 send : DataForFirebase -> Cmd msg
@@ -65,7 +92,7 @@ receive tagger onError =
     dataForElm
         (\data ->
             case data.msg of
-                "OnAuthStateChanged" ->
+                "AuthStateChanged" ->
                     tagger <| ReceivedUser data.payload
 
                 "UrlReceived" ->
@@ -76,27 +103,13 @@ receive tagger onError =
         )
 
 
-type alias Data =
-    { msg : String, payload : Value }
-
-
-port dataForFirebase : Data -> Cmd msg
-
-
-port dataForElm : (Data -> msg) -> Sub msg
-
-
-
--- HELPERS
-
-
 projectId : Config -> String
 projectId config =
     config.projectId
 
 
-tokenUrl : Config -> String -> String -> String
-tokenUrl config code state =
+tokenUrl : Config -> CodeState -> String
+tokenUrl config (code, state) =
     "https://us-central1-"
         ++ projectId config
         ++ ".cloudfunctions.net/token"

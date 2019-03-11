@@ -34,6 +34,74 @@ init conf url key =
     changeRouteTo (Route.fromUrl url) (Redirect (Session.new key conf))
 
 
+
+---- UPDATE ----
+
+
+type Msg
+    = Ignored
+    | ChangedUrl Url
+    | ClickedLink Browser.UrlRequest
+    | DeletedUser
+    | GotAuthMsg Auth.Msg
+    | GotHomeMsg Home.Msg
+    | GotSession Session
+    | LoggedError String
+    | ReceivedData DataForElm
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case ( msg, model ) of
+        ( Ignored, _ ) ->
+            ( model, Cmd.none )
+
+        ( ChangedUrl url, _ ) ->
+            changeRouteTo (Route.fromUrl url) model
+
+        ( ClickedLink urlRequest, _ ) ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model
+                    , Nav.pushUrl (Session.navKey (toSession model)) (Url.toString url)
+                    )
+
+                Browser.External href ->
+                    ( model
+                    , Nav.load href
+                    )
+
+        ( DeletedUser, _ ) ->
+            ( model, Firebase.deleteUser )
+
+        ( ReceivedData data, _ ) ->
+            receivedData model data
+
+        ( GotAuthMsg subMsg, Auth auth ) ->
+            Auth.update subMsg auth
+                |> updateWith Auth GotAuthMsg model
+
+        ( GotHomeMsg subMsg, Home home ) ->
+            Home.update subMsg home
+                |> updateWith Home GotHomeMsg model
+
+        ( GotSession session, Redirect _ ) ->
+            ( Redirect session
+            , Route.replaceUrl (Session.navKey session) Route.Home
+            )
+
+        ( _, _ ) ->
+            -- Disregard messages that arrived for the wrong page.
+            ( model, Cmd.none )
+
+
+updateWith : (subModel -> Model) -> (subMsg -> Msg) -> Model -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
+updateWith toModel toMsg _ ( subModel, subCmd ) =
+    ( toModel subModel
+    , Cmd.map toMsg subCmd
+    )
+
+
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
 changeRouteTo maybeRoute model =
     let
@@ -73,92 +141,6 @@ toSession page =
 
 
 
----- UPDATE ----
-
-
-type Msg
-    = Ignored -- handled
-    | ChangedUrl Url -- handled
-    | ClickedLink Browser.UrlRequest -- handled
-    | DeletedUser -- handled
-    | GotAuthMsg Auth.Msg -- handled
-    | GotHomeMsg Home.Msg -- handled
-    | GotSession Session -- handled
-    | GotData DataForElm -- not handled
-    | LoggedError String -- not handled
-    | SignedOut -- not handled
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case ( msg, model ) of
-        ( GotData data, _ ) ->
-            gotData model data
-
-        ( Ignored, _ ) ->
-            ( model, Cmd.none )
-
-        ( ClickedLink urlRequest, _ ) ->
-            case urlRequest of
-                Browser.Internal url ->
-                    case url.fragment of
-                        Nothing ->
-                            -- If we got a link that didn't include a fragment,
-                            -- it's from one of those (href "") attributes that
-                            -- we have to include to make the RealWorld CSS work.
-                            --
-                            -- In an application doing path routing instead of
-                            -- fragment-based routing, this entire
-                            -- `case url.fragment of` expression this comment
-                            -- is inside would be unnecessary.
-                            ( model, Cmd.none )
-
-                        Just _ ->
-                            -- ( model
-                            -- , Nav.pushUrl (Session.navKey (toSession model)) (Url.toString url)
-                            -- )
-                            ( model, Cmd.none )
-
-                Browser.External href ->
-                    ( model
-                    , Nav.load href
-                    )
-
-        ( ChangedUrl url, _ ) ->
-            changeRouteTo (Route.fromUrl url) model
-
-        ( DeletedUser, _ ) ->
-            ( model, Firebase.deleteUser )
-
-        ( GotHomeMsg subMsg, Home home ) ->
-            Home.update subMsg home
-                |> updateWith Home GotHomeMsg model
-
-        ( GotAuthMsg subMsg, Auth auth ) ->
-            Auth.update subMsg auth
-                |> updateWith Auth GotAuthMsg model
-
-        ( GotSession session, Redirect _ ) ->
-            ( Redirect session
-            , Route.replaceUrl (Session.navKey session) Route.Home
-            )
-
-        ( SignedOut, _ ) ->
-            ( model, Cmd.none )
-
-        ( _, _ ) ->
-            -- Disregard messages that arrived for the wrong page.
-            ( model, Cmd.none )
-
-
-updateWith : (subModel -> Model) -> (subMsg -> Msg) -> Model -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
-updateWith toModel toMsg _ ( subModel, subCmd ) =
-    ( toModel subModel
-    , Cmd.map toMsg subCmd
-    )
-
-
-
 ---- VIEW ----
 
 
@@ -188,8 +170,8 @@ view model =
             viewPage Page.Other GotAuthMsg (Auth.view auth)
 
 
-gotData : Model -> DataForElm -> ( Model, Cmd msg )
-gotData model data =
+receivedData : Model -> DataForElm -> ( Model, Cmd msg )
+receivedData model data =
     case data of
         ReceivedUser info ->
             let
@@ -202,7 +184,7 @@ gotData model data =
                         newModel =
                             Home.Model (Session.fromUser (toSession model) maybeUser)
                     in
-                    ( Home newModel, Route.replaceUrl (navKey model) Route.Home )
+                    ( Home newModel, Route.replaceUrl (Session.navKey (toSession model)) Route.Home )
 
                 Auth _ ->
                     let
@@ -228,32 +210,13 @@ gotData model data =
             case maybeUrl of
                 Just url ->
                     ( model
-                    , Nav.pushUrl (navKey model) (Url.toString url)
+                    , Nav.pushUrl (Session.navKey (toSession model)) (Url.toString url)
                     )
 
                 Nothing ->
                     ( model
                     , Cmd.none
                     )
-
-
-
----- HELPERS ----
-
-
-pushUrl : Model -> Url -> Cmd Msg
-pushUrl model url =
-    Nav.pushUrl (navKey model) (Url.toString url)
-
-
-config : Model -> Config
-config model =
-    Session.config (toSession model)
-
-
-navKey : Model -> Nav.Key
-navKey model =
-    Session.navKey (toSession model)
 
 
 
@@ -268,28 +231,28 @@ main =
         , onUrlRequest = ClickedLink
         , init = init
         , update = update
-        , subscriptions =
-            \_ ->
-                Sub.batch
-                    [ Firebase.receive GotData LoggedError
-                    ]
+        , subscriptions = subscriptions
         }
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model of
-        NotFound _ ->
-            Sub.none
+    Sub.batch
+        [ Firebase.receive ReceivedData LoggedError
+        , case model of
+            NotFound _ ->
+                Sub.none
 
-        Redirect _ ->
-            -- Session.changes GotSession (navKey model)
-            Sub.none
+            Redirect _ ->
+                -- Session.changes GotSession (navKey model)
+                Sub.none
 
-        Home _ ->
-            -- Sub.map GotHomeMsg (Home.subscriptions home)
-            Sub.none
+            Home _ ->
+                -- Sub.map GotHomeMsg (Home.subscriptions home)
+                Sub.none
 
-        Auth _ ->
-            -- Sub.map GotAuthMsg (Auth.subscriptions auth)
-            Sub.none
+            Auth _ ->
+                -- Sub.map GotAuthMsg (Auth.subscriptions auth)
+                Sub.none
+
+        ]

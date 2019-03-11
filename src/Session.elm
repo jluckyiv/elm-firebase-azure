@@ -1,6 +1,6 @@
 module Session exposing
-    (  Session
-       -- , changes
+    (  Session(..)
+       -- ,  changes
        -- , cred
 
     , config
@@ -29,7 +29,7 @@ import Firebase.User as User exposing (User)
 type Session
     = LoggedIn Nav.Key Config User
     | Guest Nav.Key Config
-
+    | Pending Nav.Key Config
 
 
 -- INFO
@@ -40,9 +40,11 @@ user session =
     case session of
         LoggedIn _ _ val ->
             Just val
-
-        Guest _ _ ->
+        _ ->
             Nothing
+        
+
+
 
 
 config : Session -> Config
@@ -53,6 +55,10 @@ config session =
 
         Guest _ val ->
             val
+        
+        Pending _ val ->
+            val
+        
 
 
 navKey : Session -> Nav.Key
@@ -64,6 +70,8 @@ navKey session =
         Guest key _ ->
             key
 
+        Pending key _ ->
+            key
 
 projectId : Session -> String
 projectId session =
@@ -73,11 +81,14 @@ projectId session =
 
 
 -- CHANGES
+-- changes : (Session -> msg) -> Session -> Sub msg
+-- changes toMsg session =
+--     Firebase.userChanges (\maybeUser -> toMsg (fromUser session maybeUser) User.dcod)
 
 
 new : Nav.Key -> Config -> Session
 new key conf =
-    Guest key conf
+    Pending key conf
 
 
 fromUser : Session -> Maybe User -> Session
