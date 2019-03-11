@@ -19,7 +19,7 @@ const app = Elm.Main.init({
 
 function dataForElm(data) {
   switch (data.msg) {
-    case "OnAuthStateChanged":
+    case "AuthStateChanged":
       app.ports.dataForElm.send(data);
       break;
     case "UrlReceived":
@@ -122,5 +122,5 @@ function signOut() {
 }
 
 firebase.auth().onAuthStateChanged(user => {
-  dataForElm({ msg: "OnAuthStateChanged", payload: user });
+  dataForElm({ msg: "AuthStateChanged", payload: user });
 });
